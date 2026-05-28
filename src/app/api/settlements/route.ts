@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 import { SettlementStatus } from '@prisma/client';
@@ -15,7 +15,7 @@ const createSettlementSchema = z.object({
   notes: z.string().optional(),
 });
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const data = createSettlementSchema.parse(body);

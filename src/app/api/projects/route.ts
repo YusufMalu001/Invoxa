@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 import { ProjectStatus } from '@prisma/client';
@@ -13,7 +13,7 @@ const createProjectSchema = z.object({
   status: z.nativeEnum(ProjectStatus).default(ProjectStatus.ACTIVE),
 });
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const clientId = searchParams.get('clientId');
@@ -34,7 +34,7 @@ export async function GET(request: Request) {
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const validatedData = createProjectSchema.parse(body);
