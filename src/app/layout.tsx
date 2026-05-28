@@ -48,9 +48,11 @@ export default function RootLayout({
             <Link href="/settings" className="flex items-center space-x-3 px-3 py-2 text-sm font-medium text-neutral-300 hover:text-white hover:bg-neutral-800 rounded-md transition-colors"><Settings className="w-4 h-4" /> <span>Settings</span></Link>
           </nav>
           <div className="p-4 border-t border-neutral-800">
-            <button className="flex items-center justify-center w-full space-x-2 px-3 py-2 text-sm font-medium text-neutral-400 hover:text-white hover:bg-neutral-800 rounded-md transition-colors" onClick={async () => { await fetch('/api/auth/logout', { method: 'POST' }); window.location.href = '/login'; }}>
-              <LogOut className="w-4 h-4" /> <span>Logout</span>
-            </button>
+            <form action="/api/auth/logout" method="POST">
+              <button type="submit" className="flex items-center justify-center w-full space-x-2 px-3 py-2 text-sm font-medium text-neutral-400 hover:text-white hover:bg-neutral-800 rounded-md transition-colors">
+                <LogOut className="w-4 h-4" /> <span>Logout</span>
+              </button>
+            </form>
           </div>
         </aside>
 

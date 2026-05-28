@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Bot, Scan, UploadCloud, Loader2 } from "lucide-react";
-import Tesseract from 'tesseract.js';
+// Dynamic import used in handler instead of top-level import
 import { toast } from "sonner";
 
 export default function AIOpsPage() {
@@ -18,7 +18,8 @@ export default function AIOpsPage() {
       setIsProcessing(true);
       toast.info("Starting local OCR with Tesseract...");
       
-      // Local OCR
+      // Local OCR using dynamic import
+      const Tesseract = (await import('tesseract.js')).default;
       const result = await Tesseract.recognize(file, 'eng');
       setExtractedText(result.data.text);
       

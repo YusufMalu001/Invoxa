@@ -1,10 +1,18 @@
 import { Queue, Worker, Job } from 'bullmq';
 import IORedis from 'ioredis';
 
-// Shared Redis connection for BullMQ
-const connection = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379', {
-  maxRetriesPerRequest: null,
-});
+let connection: IORedis | null = null;
+
+try {
+  if (process.env.REDIS_URL) {
+    connection = new IORedis(process.env.REDIS_URL, {
+      maxRetriesPerRequest: null,
+      enableReadyCheck: false,
+    });
+  }
+} catch (e) {
+  console.warn('Redis not available, queue disabled');
+}
 
 export const QUEUES = {
   AI_PROCESSING: 'ai-processing',
@@ -20,6 +28,7 @@ class QueueService {
   }
 
   private initQueues() {
+    if (!connection) return;
     Object.values(QUEUES).forEach(queueName => {
       this.queues.set(queueName, new Queue(queueName, { connection: connection as any }));
     });
@@ -32,7 +41,8 @@ class QueueService {
   public async addJob(queueName: string, jobName: string, data: any, opts?: any) {
     const queue = this.getQueue(queueName);
     if (!queue) {
-      throw new Error(`Queue ${queueName} not found`);
+      console.warn(`Queue ${queueName} not found or Redis disabled`);
+      return null;
     }
     return queue.add(jobName, data, opts);
   }
