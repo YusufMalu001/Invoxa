@@ -1,0 +1,246 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Client {
+  id             String    @id @default(cuid())
+  name           String
+  email          String?
+  country        String?
+  currency       String    @default("USD")
+  preferredTerms String?
+  notes          String?
+  invoices       Invoice[]
+  projects       Project[]
+  createdAt      DateTime  @default(now())
+}
+
+model Invoice {
+  id            String            @id @default(cuid())
+  invoiceNumber String            @unique
+  clientId      String
+  client        Client            @relation(fields: [clientId], references: [id])
+  lineItems     Json
+  subtotal      Float
+  tax           Float?
+  total         Float
+  currency      String            @default("USD")
+  status        InvoiceStatus     @default(DRAFT)
+  dueDate       DateTime?
+  paidAt        DateTime?
+  notes         String?
+  templateId    String?
+  settlement    SettlementRecord?
+  auditLogs     AuditLog[]
+  createdAt     DateTime          @default(now())
+}
+
+model SettlementRecord {
+  id           String           @id @default(cuid())
+  invoiceId    String           @unique
+  invoice      Invoice          @relation(fields: [invoiceId], references: [id])
+  invoicedUSD  Float
+  receivedUSD  Float?
+  realizedINR  Float?
+  exchangeRate Float?
+  platformFee  Float?
+  transferFee  Float?
+  taxDeducted  Float?
+  netRealized  Float?
+  settledAt    DateTime?
+  status       SettlementStatus @default(PENDING)
+  notes        String?
+}
+
+model InvoiceTemplate {
+  id           String   @id @default(cuid())
+  name         String
+  clientId     String?
+  lineItems    Json
+  currency     String
+  notes        String?
+  paymentTerms String?
+  usageCount   Int      @default(0)
+  createdAt    DateTime @default(now())
+}
+
+model RecurringWorkflow {
+  id         String       @id @default(cuid())
+  name       String
+  type       WorkflowType
+  templateId String?
+  clientId   String?
+  frequency  String
+  nextRunAt  DateTime
+  lastRunAt  DateTime?
+  isActive   Boolean      @default(true)
+  metadata   Json?
+  createdAt  DateTime     @default(now())
+}
+
+model Expense {
+  id             String            @id @default(cuid())
+  vendor         String
+  category       String
+  amount         Float
+  currency       String            @default("INR")
+  date           DateTime
+  receiptUrl     String?
+  ocrData        Json?
+  isRecurring    Boolean           @default(false)
+  projectId      String?
+  project        Project?          @relation(fields: [projectId], references: [id])
+  accountId      String?
+  account        FinancialAccount? @relation(fields: [accountId], references: [id])
+  journalEntries JournalEntry[]
+  tags           String[]
+  aiCategorized  Boolean           @default(false)
+  createdAt      DateTime          @default(now())
+}
+
+model FinancialAccount {
+  id            String         @id @default(cuid())
+  name          String
+  type          AccountType
+  currency      String
+  balance       Float          @default(0)
+  walletAddress String?
+  bankDetails   Json?
+  expenses      Expense[]
+  debitEntries  JournalEntry[] @relation("DebitEntries")
+  creditEntries JournalEntry[] @relation("CreditEntries")
+  isActive      Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+}
+
+model JournalEntry {
+  id              String           @id @default(cuid())
+  date            DateTime
+  description     String
+  debitAccountId  String
+  creditAccountId String
+  debitAccount    FinancialAccount @relation("DebitEntries", fields: [debitAccountId], references: [id])
+  creditAccount   FinancialAccount @relation("CreditEntries", fields: [creditAccountId], references: [id])
+  amount          Float
+  currency        String
+  referenceType   String?
+  referenceId     String?
+  expenseId       String?
+  expense         Expense?         @relation(fields: [expenseId], references: [id])
+  createdAt       DateTime         @default(now())
+}
+
+model Project {
+  id         String        @id @default(cuid())
+  name       String
+  clientId   String
+  client     Client        @relation(fields: [clientId], references: [id])
+  budget     Float?
+  currency   String        @default("USD")
+  startDate  DateTime?
+  endDate    DateTime?
+  status     ProjectStatus @default(ACTIVE)
+  milestones Milestone[]
+  expenses   Expense[]
+  createdAt  DateTime      @default(now())
+}
+
+model Milestone {
+  id        String          @id @default(cuid())
+  projectId String
+  project   Project         @relation(fields: [projectId], references: [id])
+  title     String
+  amount    Float
+  dueDate   DateTime?
+  status    MilestoneStatus @default(PENDING)
+  invoiceId String?
+}
+
+model AuditLog {
+  id            String   @id @default(cuid())
+  entityType    String
+  entityId      String
+  action        String
+  changedFields Json?
+  userId        String?
+  invoiceId     String?
+  invoice       Invoice? @relation(fields: [invoiceId], references: [id])
+  createdAt     DateTime @default(now())
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  type      String
+  title     String
+  message   String
+  isRead    Boolean  @default(false)
+  metadata  Json?
+  createdAt DateTime @default(now())
+}
+
+model AIProcessingQueue {
+  id           String      @id @default(cuid())
+  type         String
+  status       QueueStatus @default(PENDING)
+  inputData    Json
+  outputData   Json?
+  errorMessage String?
+  processedAt  DateTime?
+  createdAt    DateTime    @default(now())
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+enum SettlementStatus {
+  PENDING
+  PARTIAL
+  SETTLED
+}
+
+enum AccountType {
+  BANK
+  WISE
+  CRYPTO
+  CASH
+  EXPENSE
+}
+
+enum WorkflowType {
+  INVOICE
+  REMINDER
+  REPORT
+  BACKUP
+}
+
+enum ProjectStatus {
+  ACTIVE
+  COMPLETED
+  ON_HOLD
+  CANCELLED
+}
+
+enum MilestoneStatus {
+  PENDING
+  INVOICED
+  PAID
+}
+
+enum QueueStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
