@@ -1,12 +1,13 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
-    serverComponentsExternalPackages: ['tesseract.js', '@react-pdf/renderer'],
+    serverComponentsExternalPackages: ['@prisma/client', 'prisma'],
   },
   webpack: (config) => {
-    config.resolve.alias.canvas = false;
-    return config;
+    config.resolve.alias.canvas = false
+    return config
   },
+  output: 'standalone',
 }
 
 module.exports = nextConfig
