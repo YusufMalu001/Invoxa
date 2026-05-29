@@ -1,0 +1,50 @@
+﻿
+> invoxa-app@0.1.0 build
+> next build
+
+  Γû▓ Next.js 14.2.5
+  - Environments: .env
+
+   Creating an optimized production build ...
+ Γ£ô Compiled successfully
+   Linting and checking validity of types ...
+   Collecting page data ...
+node.exe : ANTHROPIC_API_KEY is not set. AIService will use mock fallback.
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (ANTHROPIC_API_K... mock fallback.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+   Generating static pages (0/20) ...
+   Generating static pages (5/20) 
+   Generating static pages (10/20) 
+   Generating static pages (15/20) 
+ Γ£ô Generating static pages (20/20)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                              Size     First Load JS
+Γöî Γùï /                                    118 kB          216 kB
+Γö£ Γùï /_not-found                          875 B          88.2 kB
+Γö£ Γùï /accounts                            951 B          88.3 kB
+Γö£ Γùï /activity                            2.48 kB         103 kB
+Γö£ Γùï /ai-ops                              2.31 kB        99.7 kB
+Γö£ ╞Æ /api/accounts                        0 B                0 B
+Γö£ ╞Æ /api/accounts/[id]                   0 B                0 B
+Γö£ ╞Æ /api/activity                        0 B                0 B
+Γö£ ╞Æ /api/ai/extract-receipt              0 B                0 B
+Γö£ ╞Æ /api/ai/recurring-bills              0 B                0 B
+Γö£ ╞Æ /api/auth/login                      0 B                0 B
+Γö£ ╞Æ /api/auth/logout                     0 B                0 B
+Γö£ ╞Æ /api/clients                         0 B                0 B
+Γö£ ╞Æ /api/clients/[id]                    0 B                0 B
+Γö£ ╞Æ /api/dashboard/charts                0 B                0 B
+Γö£ ╞Æ /api/dashboard/stats                 0 B                0 B
+Γö£ ╞Æ /api/expenses                        0 B                0 B
+Γö£ ╞Æ /api/expenses/[id]                   0 B                0 B
+Γö£ ╞Æ /api/invoice-templates               0 B                0 B
+Γö£ ╞Æ /api/invoices                        0 B                0 B
+Γö£ ╞Æ /api/invoices/[id]                   0 B                0 B
+Γö£ ╞Æ /api/invoices/[id]/pdf               0 B                0 B
+Γö£ ╞Æ /api/ledger                          0 B                0 B
