@@ -1,16 +1,16 @@
 "use client";
-import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { use, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Loader2, Edit3, ChevronRight } from "lucide-react";
 
-export default function ClientDetailPage() {
-  const params = useParams();
+export default function ClientDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
   const router = useRouter();
   const [client, setClient] = useState<any>(null);
 
   useEffect(() => {
-    fetch(`/api/clients/${params.id}`).then(res=>res.json()).then(data=>setClient(data)).catch(()=>router.push('/clients'));
-  }, [params.id, router]);
+    fetch(`/api/clients/${id}`).then(res=>res.json()).then(data=>setClient(data)).catch(()=>router.push('/clients'));
+  }, [id, router]);
 
   if (!client) return <div className="flex h-96 justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-indigo-500" /></div>;
 

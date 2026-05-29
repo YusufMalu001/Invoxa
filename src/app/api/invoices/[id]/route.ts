@@ -3,10 +3,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { logAction } from '@/lib/audit';
 
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const invoice = await prisma.invoice.findUnique({
-      where: { id: params.id },
+      where: { id: (await params).id },
       include: { client: true, settlement: true }
     });
     if (!invoice) return NextResponse.json({ error: 'Not found' }, { status: 404 });
@@ -16,11 +16,11 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
   }
 }
 
-export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const body = await request.json();
     const invoice = await prisma.invoice.update({
-      where: { id: params.id },
+      where: { id: (await params).id },
       data: body
     });
 
@@ -52,11 +52,11 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     // Soft delete not natively in prisma schema, so we just update status to CANCELLED
     const invoice = await prisma.invoice.update({
-      where: { id: params.id },
+      where: { id: (await params).id },
       data: { status: 'CANCELLED' }
     });
 

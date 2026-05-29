@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { use, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { CheckCircle2, ChevronRight, Copy, Loader2, Send, Trash2, ArrowRight } from "lucide-react";
 
-export default function InvoiceDetailPage() {
-  const params = useParams();
+export default function InvoiceDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
   const router = useRouter();
   const [invoice, setInvoice] = useState<any>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -21,7 +21,7 @@ export default function InvoiceDetailPage() {
   });
 
   useEffect(() => {
-    fetch(`/api/invoices/${params.id}`)
+    fetch(`/api/invoices/${id}`)
       .then(res => {
         if (!res.ok) throw new Error("Not found");
         return res.json();
@@ -37,7 +37,7 @@ export default function InvoiceDetailPage() {
         toast.error("Invoice not found");
         router.push("/invoices");
       });
-  }, [params.id, router]);
+  }, [id, router]);
 
   if (!invoice) {
     return <div className="flex h-96 items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-indigo-500" /></div>;
@@ -47,7 +47,7 @@ export default function InvoiceDetailPage() {
     if (!confirm("Are you sure you want to delete this invoice?")) return;
     setIsDeleting(true);
     try {
-      await fetch(`/api/invoices/${params.id}`, { method: 'DELETE' });
+      await fetch(`/api/invoices/${id}`, { method: 'DELETE' });
       toast.success("Invoice deleted");
       router.push("/invoices");
     } catch {
@@ -58,7 +58,7 @@ export default function InvoiceDetailPage() {
 
   const handleStatusChange = async (status: string) => {
     try {
-      const res = await fetch(`/api/invoices/${params.id}`, {
+      const res = await fetch(`/api/invoices/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status })

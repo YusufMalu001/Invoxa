@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { use, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { ChevronRight, Loader2, Target, DollarSign, TrendingUp, CheckCircle2 } from "lucide-react";
 
-export default function ProjectDetailPage() {
-  const params = useParams();
+export default function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
   const router = useRouter();
   const [project, setProject] = useState<any>(null);
 
@@ -15,7 +15,7 @@ export default function ProjectDetailPage() {
     // We would fetch the actual project details and related milestones/expenses here
     // For now, setting a stub to satisfy UI structure
     setProject({
-      id: params.id,
+      id: id,
       name: "Acme Website Redesign",
       budget: 50000,
       currency: "USD",
@@ -28,7 +28,7 @@ export default function ProjectDetailPage() {
         { id: "3", title: "Launch", amount: 10000, status: "PENDING" },
       ]
     });
-  }, [params.id]);
+  }, [id]);
 
   if (!project) {
     return <div className="flex h-96 items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-indigo-500" /></div>;
