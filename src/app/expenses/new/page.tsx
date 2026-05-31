@@ -361,7 +361,7 @@ export default function NewExpensePage() {
                 <div>
                   <p className="mb-1"><span className="font-semibold">Vendor:</span> {watch("vendor") || "[vendor name]"}</p>
                   <p className="mb-1"><span className="font-semibold">Category:</span> {watch("category") || "[category]"}</p>
-                  <p className="mb-1"><span className="font-semibold">Account:</span> {getAccountName(watchAccountId) || "[account name]"}</p>
+                  <p className="mb-1"><span className="font-semibold">Account:</span> {getAccountName(watchAccountId || '') || "[account name]"}</p>
                 </div>
                 <div className="text-right">
                   <p className="mb-1"><span className="font-semibold">Date:</span> {watch("date") ? new Date(watch("date")).toLocaleDateString('en-US') : "[date]"}</p>
@@ -424,7 +424,7 @@ export default function NewExpensePage() {
                   <div className="font-semibold">Payment Method:</div>
                   <div>{watch("paymentMethod") || "[method]"}</div>
                   <div className="font-semibold">Paid From:</div>
-                  <div>{getAccountName(watchPaidFromId) || "[account name]"}</div>
+                  <div>{getAccountName(watchPaidFromId || '') || "[account name]"}</div>
                   <div className="font-semibold mt-2">Notes:</div>
                   <div className="mt-2 whitespace-pre-wrap text-gray-700">{watch("notes") || "[notes]"}</div>
                 </div>

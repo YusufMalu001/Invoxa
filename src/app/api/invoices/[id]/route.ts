@@ -5,8 +5,8 @@ import { logAction } from '@/lib/audit';
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const invoice = await prisma.invoice.findUnique({
-      where: { id: (await params).id },
+    const invoice = await prisma.invoice.findFirst({
+      where: { id: (await params).id, deletedAt: null },
       include: { client: true, settlement: true }
     });
     if (!invoice) return NextResponse.json({ error: 'Not found' }, { status: 404 });
@@ -54,13 +54,22 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    // Soft delete not natively in prisma schema, so we just update status to CANCELLED
-    const invoice = await prisma.invoice.update({
-      where: { id: (await params).id },
-      data: { status: 'CANCELLED' }
-    });
+    const id = (await params).id;
+    const inv = await prisma.invoice.findUnique({ where: { id } });
+    if (!inv) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-    await logAction('Invoice', invoice.id, 'SOFT_DELETED');
+    if (inv.status === 'DRAFT') {
+      await prisma.invoice.delete({ where: { id } });
+      await logAction('Invoice', id, 'HARD_DELETED');
+    } else {
+      await prisma.invoice.update({
+        where: { id },
+        data: { deletedAt: new Date() }
+      });
+      await logAction('Invoice', id, 'SOFT_DELETED');
+    }
+
+
 
     return NextResponse.json({ success: true });
   } catch (error) {

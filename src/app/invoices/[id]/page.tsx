@@ -4,7 +4,20 @@ import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { toast } from "sonner";
-import { CheckCircle2, ChevronRight, Copy, Loader2, Send, Trash2, ArrowRight } from "lucide-react";
+import { CheckCircle2, ChevronRight, Copy, Loader2, Send, Trash2, ArrowRight, Share2, MessageCircle, Mail, Link as LinkIcon, Download, Star, Edit2, FileText } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import dynamic from "next/dynamic";
+import { InvoicePDFDocument } from "@/components/InvoicePDFDocument";
+
+const PDFViewer = dynamic(() => import('@react-pdf/renderer').then(mod => mod.PDFViewer), {
+  ssr: false,
+  loading: () => <div className="flex h-full items-center justify-center text-neutral-500"><Loader2 className="w-6 h-6 animate-spin mr-2"/> Loading PDF engine...</div>
+});
 
 export default function InvoiceDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -75,6 +88,47 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
     }
   };
 
+  const toggleStar = async () => {
+    try {
+      const newStarred = !invoice.starred;
+      setInvoice({ ...invoice, starred: newStarred });
+      await fetch(`/api/invoices/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ starred: newStarred })
+      });
+    } catch {
+      toast.error("Failed to update star");
+      setInvoice({ ...invoice, starred: !invoice.starred }); // revert
+    }
+  };
+
+  const handleShare = (option: string) => {
+    const text = `Invoice ${invoice.invoiceNumber}\nClient: ${invoice.client.name}\nAmount: ${invoice.currency} ${invoice.total}\nDue: ${invoice.dueDate ? format(new Date(invoice.dueDate), 'MMM d, yyyy') : 'N/A'}`;
+    const fullUrl = window.location.href;
+    
+    switch (option) {
+      case 'whatsapp':
+        window.open(`https://wa.me/?text=${encodeURIComponent(text + '\n' + fullUrl)}`, '_blank');
+        break;
+      case 'telegram':
+        window.open(`https://t.me/share/url?url=${encodeURIComponent(fullUrl)}&text=${encodeURIComponent(`Invoice ${invoice.invoiceNumber} | ${invoice.client.name} | ${invoice.currency} ${invoice.total}`)}`, '_blank');
+        break;
+      case 'gmail':
+        const subject = `Invoice ${invoice.invoiceNumber} from Invoxa`;
+        const body = `Hi ${invoice.client.name},\n\nPlease find your invoice details below:\n\nInvoice #: ${invoice.invoiceNumber}\nAmount: ${invoice.currency} ${invoice.total}\nDue Date: ${invoice.dueDate ? format(new Date(invoice.dueDate), 'MMM d, yyyy') : 'N/A'}\n\nView invoice: ${fullUrl}\n\nThank you.`;
+        window.open(`mailto:${invoice.client.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, '_blank');
+        break;
+      case 'copy':
+        navigator.clipboard.writeText(fullUrl);
+        toast.success('Link copied to clipboard');
+        break;
+      case 'pdf':
+        window.open(`/api/invoices/${invoice.id}/pdf`, '_blank');
+        break;
+    }
+  };
+
   const saveSettlement = async () => {
     try {
       const res = await fetch('/api/settlements', {
@@ -112,9 +166,37 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
           <p className="text-neutral-400 mt-1">{invoice.client.name} • {format(new Date(invoice.createdAt), 'MMM d, yyyy')}</p>
         </div>
         <div className="flex space-x-3">
-          <button onClick={() => router.push(`/invoices/new?duplicate=${invoice.id}`)} className="p-2 border border-neutral-700 rounded-md text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors tooltip" title="Duplicate">
-            <Copy className="w-4 h-4" />
+          <button onClick={toggleStar} className="p-2 border border-neutral-700 rounded-md text-neutral-400 hover:text-yellow-500 hover:bg-neutral-800 transition-colors tooltip">
+            <Star className={`w-4 h-4 ${invoice.starred ? 'fill-yellow-500 text-yellow-500' : ''}`} />
           </button>
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger className="flex items-center px-4 py-2 border border-neutral-700 rounded-md text-sm font-medium text-neutral-300 hover:bg-neutral-800 transition-colors outline-none">
+              <Share2 className="w-4 h-4 mr-2" /> Share
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48 bg-neutral-900 border-neutral-800">
+              <DropdownMenuItem onClick={() => handleShare('whatsapp')} className="hover:bg-neutral-800 cursor-pointer text-sm">
+                <MessageCircle className="w-4 h-4 mr-2" /> WhatsApp
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleShare('telegram')} className="hover:bg-neutral-800 cursor-pointer text-sm">
+                <Send className="w-4 h-4 mr-2" /> Telegram
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleShare('gmail')} className="hover:bg-neutral-800 cursor-pointer text-sm">
+                <Mail className="w-4 h-4 mr-2" /> Gmail
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleShare('copy')} className="hover:bg-neutral-800 cursor-pointer text-sm">
+                <LinkIcon className="w-4 h-4 mr-2" /> Copy Link
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleShare('pdf')} className="hover:bg-neutral-800 cursor-pointer text-sm">
+                <Download className="w-4 h-4 mr-2" /> Download PDF
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <button onClick={() => router.push(`/invoices/${invoice.id}/edit`)} className="p-2 border border-neutral-700 rounded-md text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors tooltip" title="Edit">
+            <Edit2 className="w-4 h-4" />
+          </button>
+          
           <button onClick={handleDelete} disabled={isDeleting} className="p-2 border border-neutral-700 rounded-md text-rose-400 hover:bg-rose-500/10 transition-colors" title="Delete">
             <Trash2 className="w-4 h-4" />
           </button>
@@ -240,6 +322,22 @@ export default function InvoiceDetailPage({ params }: { params: Promise<{ id: st
               )}
             </div>
           )}
+
+          <div className="rounded-xl border border-neutral-800 bg-neutral-900/50 flex-col overflow-hidden h-[600px] flex">
+            <div className="p-4 border-b border-neutral-800 flex justify-between items-center bg-neutral-950">
+              <h3 className="text-sm font-medium flex items-center text-neutral-300">
+                <FileText className="w-4 h-4 mr-2" /> Live PDF Preview
+              </h3>
+            </div>
+            <div className="flex-1 w-full h-full bg-neutral-900">
+              <PDFViewer width="100%" height="100%" className="border-0">
+                <InvoicePDFDocument 
+                  data={invoice} 
+                  clientName={invoice.client.name} 
+                />
+              </PDFViewer>
+            </div>
+          </div>
         </div>
       </div>
     </div>

@@ -26,7 +26,19 @@ const createInvoiceSchema = z.object({
 
 export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url);
+    const statusParam = searchParams.get('status');
+    
+    let whereClause: any = { deletedAt: null };
+    
+    if (statusParam && statusParam !== 'ALL' && statusParam !== 'active') {
+      whereClause.status = statusParam.toUpperCase();
+    } else if (statusParam === 'active') {
+      whereClause.status = { not: 'DRAFT' };
+    }
+
     const invoices = await prisma.invoice.findMany({
+      where: whereClause,
       include: {
         client: {
           select: { name: true, email: true }

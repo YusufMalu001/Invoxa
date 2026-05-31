@@ -55,6 +55,8 @@ model Invoice {
   templateId      String?
   settlement      SettlementRecord?
   auditLogs       AuditLog[]
+  starred         Boolean           @default(false)
+  deletedAt       DateTime?
   createdAt       DateTime          @default(now())
 }
 
