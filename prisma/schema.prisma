@@ -18,10 +18,16 @@ model Client {
   country        String?
   currency       String    @default("USD")
   preferredTerms String?
-  notes          String?
-  invoices       Invoice[]
-  projects       Project[]
-  createdAt      DateTime  @default(now())
+  notes           String?
+  paymentMethod   String?
+  bankName        String?
+  bankAccountName String?
+  accountNumber   String?
+  ifscCode        String?
+  swiftCode       String?
+  invoices        Invoice[]
+  projects        Project[]
+  createdAt       DateTime  @default(now())
 }
 
 model Invoice {
@@ -37,11 +43,19 @@ model Invoice {
   status        InvoiceStatus     @default(DRAFT)
   dueDate       DateTime?
   paidAt        DateTime?
-  notes         String?
-  templateId    String?
-  settlement    SettlementRecord?
-  auditLogs     AuditLog[]
-  createdAt     DateTime          @default(now())
+  notes           String?
+  senderName      String?
+  billToCompany   String?
+  paymentMethod   String?
+  bankName        String?
+  bankAccountName String?
+  accountNumber   String?
+  ifscCode        String?
+  swiftCode       String?
+  templateId      String?
+  settlement      SettlementRecord?
+  auditLogs       AuditLog[]
+  createdAt       DateTime          @default(now())
 }
 
 model SettlementRecord {
@@ -89,12 +103,21 @@ model RecurringWorkflow {
 
 model Expense {
   id             String            @id @default(cuid())
+  expenseNumber  String?
   vendor         String
   category       String
   amount         Float
   currency       String            @default("INR")
   date           DateTime
   receiptUrl     String?
+  status         String            @default("SAVED")
+  taxRate        Float?            @default(0)
+  subtotal       Float?
+  total          Float?
+  notes          String?
+  paymentMethod  String?
+  paidFromAccountId String?
+  lineItems      Json?
   ocrData        Json?
   isRecurring    Boolean           @default(false)
   projectId      String?

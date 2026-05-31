@@ -79,7 +79,8 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     const expenses = await prisma.expense.findMany({
-      orderBy: { date: 'desc' }
+      orderBy: { date: 'desc' },
+      include: { account: true }
     });
     return NextResponse.json(expenses);
   } catch (error) {
