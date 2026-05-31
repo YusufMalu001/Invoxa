@@ -129,6 +129,7 @@ model Expense {
   journalEntries JournalEntry[]
   tags           String[]
   aiCategorized  Boolean           @default(false)
+  deletedAt      DateTime?
   createdAt      DateTime          @default(now())
 }
 

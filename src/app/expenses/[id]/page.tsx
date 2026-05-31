@@ -1,254 +1,209 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { Loader2, Edit3, Download, Trash2, ChevronRight, FileText, Calendar, Building, Tag, FileStack, CheckCircle2 } from "lucide-react";
-import Link from "next/link";
+import { use, useEffect, useState, Suspense } from "react";
+import dynamic from "next/dynamic";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { ArrowLeft, Edit2, Trash2, Download, Loader2, Share2, MessageCircle, Send, Mail, Link as LinkIcon, FileText } from "lucide-react";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { ExpensePDFDocument } from "@/components/ExpensePDFDocument";
+
+const PDFViewer = dynamic(() => import('@react-pdf/renderer').then(mod => mod.PDFViewer), {
+  ssr: false,
+  loading: () => <div className="flex h-full items-center justify-center text-neutral-500"><Loader2 className="w-6 h-6 animate-spin mr-2"/> Loading PDF...</div>
+});
 
 export default function ExpenseDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
   const router = useRouter();
+  const { id } = use(params);
   const [expense, setExpense] = useState<any>(null);
-  const [auditLogs, setAuditLogs] = useState<any[]>([]);
-
-  const fetchExpense = () => {
-    fetch('/api/expenses') // This fetches all. Wait, we don't have a GET /api/expenses/[id] endpoint? We must create one or use a specific one.
-      .then(res => res.json())
-      .then(data => {
-        if(Array.isArray(data)) {
-          const found = data.find(e => e.id === id);
-          if (found) setExpense(found);
-          else router.push('/expenses');
-        }
-      })
-      .catch(() => router.push('/expenses'));
-  };
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Better to fetch specific endpoint if it exists, but since we didn't create GET /api/expenses/[id], 
-    // we'll fetch all and filter or we can quickly create GET /api/expenses/[id] endpoint.
     fetch(`/api/expenses/${id}`)
-      .then(res => {
-        if (!res.ok) throw new Error("Not found");
-        return res.json();
-      })
+      .then(res => res.json())
       .then(data => {
+        if (data.error) throw new Error(data.error);
         setExpense(data);
-        // If audit logs endpoint exists, fetch it here
-        fetch(`/api/audit?entityId=${id}`)
-          .then(r => r.json())
-          .then(logs => {
-            if(Array.isArray(logs)) setAuditLogs(logs);
-          }).catch(()=>{});
       })
-      .catch(() => router.push('/expenses'));
-  }, [id, router]);
+      .catch(err => toast.error("Failed to load expense"))
+      .finally(() => setLoading(false));
+  }, [id]);
 
   const handleDelete = async () => {
-    if (confirm('Are you sure you want to delete this expense?')) {
-      try {
-        const res = await fetch(`/api/expenses/${id}`, { method: 'DELETE' });
-        if (res.ok) {
-          toast.success("Expense deleted");
-          router.push('/expenses');
-        } else {
-          toast.error("Failed to delete");
-        }
-      } catch (e) {
-        toast.error("An error occurred");
-      }
+    if (!confirm('Delete this expense? This cannot be undone.')) return;
+    try {
+      await fetch(`/api/expenses/${id}`, { method: 'DELETE' });
+      toast.success('Expense deleted');
+      router.push('/expenses');
+    } catch {
+      toast.error('Failed to delete');
     }
   };
 
-  if (!expense) {
-    return (
-      <div className="flex h-[80vh] justify-center items-center">
-        <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
-      </div>
-    );
+  const handleShare = (type: string) => {
+    if (!expense) return;
+    
+    const text = `Expense: ${expense.vendor}\nCategory: ${expense.category}\nAmount: ${expense.currency} ${expense.amount}\nDate: ${format(new Date(expense.date), 'MMM d, yyyy')}`;
+    const url = `${window.location.origin}/expenses/${id}`;
+
+    switch (type) {
+      case 'whatsapp':
+        window.open(`https://wa.me/?text=${encodeURIComponent(text + '\n' + url)}`, '_blank');
+        break;
+      case 'telegram':
+        window.open(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`, '_blank');
+        break;
+      case 'email':
+        window.open(`mailto:?subject=${encodeURIComponent(`Expense Receipt: ${expense.vendor}`)}&body=${encodeURIComponent(text + '\n\nView: ' + url)}`, '_blank');
+        break;
+      case 'copy':
+        navigator.clipboard.writeText(url);
+        toast.success('Link copied to clipboard');
+        break;
+      case 'pdf':
+        window.open(`/api/expenses/${id}/pdf`, '_blank');
+        break;
+    }
+  };
+
+  if (loading) {
+    return <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-neutral-500" /></div>;
   }
+
+  if (!expense) return <div className="text-center py-20">Expense not found</div>;
 
   const lineItems = Array.isArray(expense.lineItems) ? expense.lineItems : [];
 
   return (
-    <div className="space-y-6 pb-20">
-      {/* Breadcrumb */}
-      <div className="flex items-center text-sm text-neutral-400 mb-2">
-        <Link href="/expenses" className="hover:text-neutral-200">Expenses</Link>
-        <ChevronRight className="w-4 h-4 mx-1" />
-        <span className="text-neutral-200">{expense.expenseNumber || expense.id}</span>
-      </div>
-
-      {/* Header */}
-      <div className="rounded-xl border border-neutral-800 bg-neutral-900/50 p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-        <div>
-          <div className="flex items-center space-x-3 mb-2">
-            <h2 className="text-3xl font-bold tracking-tight text-white">{expense.expenseNumber || 'Expense'}</h2>
-            <span className="px-2.5 py-1 text-xs font-medium border rounded-full bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
-              {expense.status || 'SAVED'}
+    <div className="space-y-6">
+      <div className="flex items-center space-x-4">
+        <Link href="/expenses" className="p-2 rounded-md hover:bg-neutral-800 transition-colors text-neutral-400">
+          <ArrowLeft className="w-5 h-5" />
+        </Link>
+        <div className="flex-1">
+          <h2 className="text-2xl font-bold tracking-tight flex items-center gap-3">
+            {expense.vendor} <span className="text-neutral-500 font-normal">#{expense.expenseNumber || id.slice(0,8)}</span>
+          </h2>
+          <div className="flex gap-2 mt-1">
+            <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+              expense.status === 'SAVED' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-neutral-800 text-neutral-400'
+            }`}>
+              {expense.status}
             </span>
-            {expense.aiCategorized && (
-               <span className="px-2.5 py-1 rounded text-xs bg-purple-500/10 text-purple-400 border border-purple-500/20">AI Categorized</span>
-            )}
+            {expense.isRecurring && <span className="px-2 py-0.5 rounded text-xs font-medium bg-indigo-500/10 text-indigo-400">Recurring</span>}
           </div>
-          <p className="text-neutral-400 flex items-center space-x-4 text-sm">
-            <span className="flex items-center"><Building className="w-4 h-4 mr-1" /> {expense.vendor}</span>
-            <span className="flex items-center"><Calendar className="w-4 h-4 mr-1" /> {format(new Date(expense.date), 'MMM d, yyyy')}</span>
-            <span className="flex items-center"><Tag className="w-4 h-4 mr-1" /> {expense.category}</span>
-          </p>
         </div>
-        <div className="flex gap-3">
-          <button onClick={() => router.push(`/expenses/${id}/edit`)} className="flex items-center px-4 py-2 border border-neutral-700 bg-neutral-900 rounded-md text-sm font-medium hover:bg-neutral-800 transition-colors text-white">
-            <Edit3 className="w-4 h-4 mr-2" /> Edit
-          </button>
-          <a href={`/api/expenses/${id}/pdf`} target="_blank" rel="noreferrer" className="flex items-center px-4 py-2 bg-indigo-600 rounded-md text-sm font-medium hover:bg-indigo-700 transition-colors text-white">
-            <Download className="w-4 h-4 mr-2" /> Download PDF
+        
+        <div className="flex space-x-2">
+          <Link href={`/expenses/${id}/edit`} className="p-2 bg-neutral-900 border border-neutral-800 rounded-md hover:bg-neutral-800 text-neutral-300">
+            <Edit2 className="w-4 h-4" />
+          </Link>
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger className="flex items-center px-4 py-2 bg-neutral-900 border border-neutral-800 rounded-md text-sm font-medium hover:bg-neutral-800 text-neutral-300">
+              <Share2 className="w-4 h-4 mr-2" /> Share
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48 bg-neutral-900 border-neutral-800 text-neutral-200">
+              <DropdownMenuItem onClick={() => handleShare('whatsapp')} className="hover:bg-neutral-800 cursor-pointer">
+                <MessageCircle className="w-4 h-4 mr-2" /> WhatsApp
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleShare('telegram')} className="hover:bg-neutral-800 cursor-pointer">
+                <Send className="w-4 h-4 mr-2" /> Telegram
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleShare('email')} className="hover:bg-neutral-800 cursor-pointer">
+                <Mail className="w-4 h-4 mr-2" /> Email
+              </DropdownMenuItem>
+              <DropdownMenuSeparator className="bg-neutral-800" />
+              <DropdownMenuItem onClick={() => handleShare('copy')} className="hover:bg-neutral-800 cursor-pointer">
+                <LinkIcon className="w-4 h-4 mr-2" /> Copy Link
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleShare('pdf')} className="hover:bg-neutral-800 cursor-pointer">
+                <Download className="w-4 h-4 mr-2" /> Download PDF
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <a href={`/api/expenses/${id}/pdf`} target="_blank" rel="noreferrer" className="flex items-center px-4 py-2 bg-indigo-600 rounded-md text-sm font-medium hover:bg-indigo-700 transition-colors">
+            <Download className="w-4 h-4 mr-2" /> PDF
           </a>
-          <button onClick={handleDelete} className="flex items-center px-4 py-2 border border-rose-900/50 bg-rose-950/20 rounded-md text-sm font-medium text-rose-400 hover:bg-rose-950/40 transition-colors">
-            <Trash2 className="w-4 h-4 mr-2" /> Delete
+
+          <button onClick={handleDelete} className="p-2 border border-rose-500/20 bg-rose-500/10 text-rose-500 rounded-md hover:bg-rose-500/20 transition-colors">
+            <Trash2 className="w-4 h-4" />
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left Column: Details */}
-        <div className="space-y-6">
-          <div className="rounded-xl border border-neutral-800 bg-neutral-900/50 p-6">
-            <h3 className="text-lg font-medium text-white mb-4 border-b border-neutral-800 pb-2">Expense Details</h3>
-            <div className="grid grid-cols-2 gap-y-4 gap-x-8 text-sm">
-              <div>
-                <p className="text-neutral-500 mb-1">Vendor</p>
-                <p className="font-medium text-neutral-200">{expense.vendor}</p>
-              </div>
-              <div>
-                <p className="text-neutral-500 mb-1">Category</p>
-                <p className="font-medium text-neutral-200">{expense.category}</p>
-              </div>
-              <div>
-                <p className="text-neutral-500 mb-1">Account</p>
-                <p className="font-medium text-neutral-200">{expense.account?.name || 'Unlinked'}</p>
-              </div>
-              <div>
-                <p className="text-neutral-500 mb-1">Project</p>
-                <p className="font-medium text-neutral-200">{expense.project?.name || 'None'}</p>
-              </div>
-              <div>
-                <p className="text-neutral-500 mb-1">Currency</p>
-                <p className="font-medium text-neutral-200">{expense.currency}</p>
-              </div>
-              <div>
-                <p className="text-neutral-500 mb-1">Payment Method</p>
-                <p className="font-medium text-neutral-200">{expense.paymentMethod || 'N/A'}</p>
-              </div>
-              <div className="col-span-2">
-                <p className="text-neutral-500 mb-1">Notes</p>
-                <p className="text-neutral-300 whitespace-pre-wrap">{expense.notes || 'No notes provided.'}</p>
-              </div>
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+        <div className="lg:col-span-3 space-y-6">
+          <div className="rounded-xl border border-neutral-800 bg-neutral-900/50 p-6 space-y-4">
+            <h3 className="text-sm font-medium text-neutral-400 uppercase tracking-wider mb-4">Expense Details</h3>
+            <div className="grid grid-cols-2 gap-y-4 gap-x-8">
+              <div><p className="text-sm text-neutral-500">Date</p><p className="font-medium text-neutral-200">{format(new Date(expense.date), 'MMM d, yyyy')}</p></div>
+              <div><p className="text-sm text-neutral-500">Category</p><p className="font-medium text-neutral-200">{expense.category}</p></div>
+              <div><p className="text-sm text-neutral-500">Currency</p><p className="font-medium text-neutral-200">{expense.currency}</p></div>
+              <div><p className="text-sm text-neutral-500">Account</p><p className="font-medium text-neutral-200">{expense.account?.name || 'Unlinked'}</p></div>
+              {expense.project && <div><p className="text-sm text-neutral-500">Project</p><p className="font-medium text-neutral-200">{expense.project.name}</p></div>}
+              <div><p className="text-sm text-neutral-500">Payment Method</p><p className="font-medium text-neutral-200">{expense.paymentMethod || 'N/A'}</p></div>
             </div>
-            {expense.isRecurring && (
-              <div className="mt-4 p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-lg flex items-center">
-                <CheckCircle2 className="w-5 h-5 text-indigo-400 mr-2" />
-                <span className="text-sm text-indigo-300">This is a recurring expense profile.</span>
+            
+            {expense.notes && (
+              <div className="pt-4 mt-4 border-t border-neutral-800">
+                <p className="text-sm text-neutral-500 mb-1">Notes</p>
+                <p className="text-sm text-neutral-300 whitespace-pre-wrap">{expense.notes}</p>
               </div>
             )}
           </div>
 
-          <div className="rounded-xl border border-neutral-800 bg-neutral-900/50 p-6">
-            <h3 className="text-lg font-medium text-white mb-4 border-b border-neutral-800 pb-2">Line Items</h3>
-            {lineItems.length > 0 ? (
-              <div className="space-y-4">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm text-left">
-                    <thead className="text-xs uppercase bg-neutral-950/30 text-neutral-500 border-b border-neutral-800">
-                      <tr>
-                        <th className="py-3 font-medium">Description</th>
-                        <th className="py-3 font-medium text-center">Qty</th>
-                        <th className="py-3 font-medium text-center">Rate</th>
-                        <th className="py-3 font-medium text-right">Amount</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-neutral-800">
-                      {lineItems.map((item: any, i: number) => {
-                        if (item.isSection) {
-                          return (
-                            <tr key={i} className="bg-neutral-950/20">
-                              <td colSpan={4} className="py-3 font-medium text-indigo-400">{item.description}</td>
-                            </tr>
-                          );
-                        }
-                        return (
-                          <tr key={i}>
-                            <td className="py-3 text-neutral-300">{item.description}</td>
-                            <td className="py-3 text-center text-neutral-400">{item.qty}</td>
-                            <td className="py-3 text-center text-neutral-400">{item.rate}</td>
-                            <td className="py-3 text-right font-medium text-white">${Number(item.amount || 0).toFixed(2)}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-                <div className="flex justify-end pt-4 border-t border-neutral-800">
-                  <div className="w-64 space-y-2 text-sm">
-                    <div className="flex justify-between text-neutral-400">
-                      <span>Subtotal</span>
-                      <span>${Number(expense.subtotal || 0).toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between text-neutral-400">
-                      <span>Tax ({expense.taxRate || 0}%)</span>
-                      <span>${(Number(expense.total || 0) - Number(expense.subtotal || 0)).toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between font-medium text-base text-white pt-2 border-t border-neutral-800">
-                      <span>Total</span>
-                      <span>${Number(expense.total || expense.amount || 0).toFixed(2)}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <p className="text-sm text-neutral-500">No line items recorded.</p>
-            )}
+          <div className="rounded-xl border border-neutral-800 bg-neutral-900/50 overflow-hidden">
+            <table className="w-full text-sm text-left">
+              <thead className="text-xs uppercase bg-neutral-950/30 text-neutral-500 border-b border-neutral-800">
+                <tr>
+                  <th className="px-5 py-3 font-medium">Description</th>
+                  <th className="px-5 py-3 font-medium text-right">Qty</th>
+                  <th className="px-5 py-3 font-medium text-right">Rate</th>
+                  <th className="px-5 py-3 font-medium text-right">Amount</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-neutral-800">
+                {lineItems.map((item: any, i: number) => {
+                  if (item.isSection) {
+                    return (
+                      <tr key={i} className="bg-neutral-800/30"><td colSpan={4} className="px-5 py-2 font-medium text-indigo-400">{item.description}</td></tr>
+                    )
+                  }
+                  return (
+                    <tr key={i}>
+                      <td className="px-5 py-4 text-neutral-300">{item.description}</td>
+                      <td className="px-5 py-4 text-right text-neutral-400">{item.hours || item.qty || 0}</td>
+                      <td className="px-5 py-4 text-right text-neutral-400">{item.cost || item.rate || 0}</td>
+                      <td className="px-5 py-4 text-right font-medium text-white">${Number(item.amount || 0).toFixed(2)}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+            
+            <div className="p-5 border-t border-neutral-800 bg-neutral-950/30 flex flex-col items-end space-y-2 text-sm">
+              <div className="flex justify-between w-48 text-neutral-400"><span>Subtotal:</span><span>${Number(expense.subtotal || 0).toFixed(2)}</span></div>
+              <div className="flex justify-between w-48 text-neutral-400"><span>Tax ({expense.taxRate || 0}%):</span><span>${(Number(expense.total || 0) - Number(expense.subtotal || 0)).toFixed(2)}</span></div>
+              <div className="flex justify-between w-48 text-lg font-bold text-white pt-2 border-t border-neutral-800"><span>Total:</span><span>${Number(expense.total || expense.amount || 0).toFixed(2)}</span></div>
+            </div>
           </div>
-
-          <div className="rounded-xl border border-neutral-800 bg-neutral-900/50 p-6">
-            <h3 className="text-lg font-medium text-white mb-4 border-b border-neutral-800 pb-2">Audit Timeline</h3>
-            {auditLogs.length > 0 ? (
-              <div className="space-y-4">
-                {auditLogs.map((log: any) => (
-                  <div key={log.id} className="flex">
-                    <div className="flex flex-col items-center mr-4">
-                      <div className="w-2 h-2 rounded-full bg-indigo-500 mt-1.5" />
-                      <div className="w-px h-full bg-neutral-800 my-1" />
-                    </div>
-                    <div className="pb-4">
-                      <p className="text-sm font-medium text-white">{log.action}</p>
-                      <p className="text-xs text-neutral-500">{format(new Date(log.createdAt), 'MMM d, yyyy h:mm a')} • {log.user || 'System'}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-neutral-500">No audit events found.</p>
-            )}
-          </div>
-
         </div>
 
-        {/* Right Column: PDF Preview */}
-        <div className="rounded-xl border border-neutral-800 bg-neutral-900/50 flex flex-col h-full min-h-[800px] overflow-hidden">
-          <div className="p-4 border-b border-neutral-800 bg-neutral-950 flex justify-between items-center">
+        <div className="lg:col-span-2 hidden lg:flex rounded-xl border border-neutral-800 bg-neutral-900/50 flex-col overflow-hidden h-[800px]">
+          <div className="p-4 border-b border-neutral-800 flex justify-between items-center bg-neutral-950">
             <h3 className="text-sm font-medium flex items-center text-neutral-300">
               <FileText className="w-4 h-4 mr-2" /> Live PDF Preview
             </h3>
           </div>
           <div className="flex-1 w-full h-full bg-neutral-900">
-            <iframe 
-              src={`/api/expenses/${id}/pdf`} 
-              className="w-full h-full border-0" 
-              title="Expense PDF Preview"
-            />
+            <PDFViewer width="100%" height="100%" className="border-0">
+              <ExpensePDFDocument expense={expense} />
+            </PDFViewer>
           </div>
         </div>
       </div>

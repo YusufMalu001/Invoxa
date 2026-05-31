@@ -120,18 +120,24 @@ async function main() {
 
   // 5. Create Expenses (10)
   const expenseCategories = ['Software', 'Travel', 'Marketing', 'Contractors', 'Office'];
+  const vendors = [
+    'Slack', 'AWS', 'Google Cloud', 'GitHub', 'Notion',
+    'Figma', 'Zoom', 'Vercel', 'OpenAI', 'Cloudflare'
+  ];
   
-  for (let i = 1; i <= 10; i++) {
+  for (let i = 0; i < 10; i++) {
     await prisma.expense.create({
       data: {
-        vendor: `Vendor ${i}`,
+        vendor: vendors[i],
         category: expenseCategories[i % 5],
-        amount: 50 + (i * 20),
+        amount: 50 + ((i+1) * 20),
         currency: 'USD',
-        date: subDays(now, i * 2),
+        date: subDays(now, (i+1) * 2),
         accountId: bankAccount.id,
-        projectId: i % 3 === 0 ? project1.id : null,
-        aiCategorized: true,
+        projectId: (i+1) % 3 === 0 ? project1.id : null,
+        aiCategorized: false,
+        status: 'SAVED',
+        isRecurring: i % 4 === 0,
       }
     });
   }

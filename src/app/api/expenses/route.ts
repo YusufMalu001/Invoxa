@@ -28,12 +28,21 @@ export async function POST(request: NextRequest) {
     const expense = await prisma.expense.create({
       data: {
         vendor: body.vendor,
+        expenseNumber: body.expenseNumber || undefined,
         amount: amountNum,
+        subtotal: body.subtotal,
+        total: body.total,
         date: dateObj,
         category: body.category,
         currency: body.currency || 'USD',
         accountId: body.accountId || undefined,
-        aiCategorized: body.aiCategorized || false,
+        projectId: body.projectId || undefined,
+        status: body.status || 'SAVED',
+        isRecurring: body.isRecurring || false,
+        paymentMethod: body.paymentMethod || undefined,
+        notes: body.notes || undefined,
+        lineItems: body.lineItems || [],
+        aiCategorized: false,
       }
     });
 
@@ -78,9 +87,22 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
+    const url = new URL(request.url);
+    const status = url.searchParams.get('status');
+    const isRecurring = url.searchParams.get('isRecurring') === 'true';
+
+    let where: any = { deletedAt: null };
+
+    if (isRecurring) {
+      where.isRecurring = true;
+    } else if (status && status !== 'active') {
+      where.status = status;
+    }
+
     const expenses = await prisma.expense.findMany({
+      where,
       orderBy: { date: 'desc' },
-      include: { account: true }
+      include: { account: true, project: true }
     });
     return NextResponse.json(expenses);
   } catch (error) {
